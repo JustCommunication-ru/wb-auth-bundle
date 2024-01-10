@@ -1,5 +1,5 @@
 {
-    "name": "justcommunication-ru/auth-bundle",
+    "name": "justcommunication-ru/wb-auth-bundle",
     "description": "Security auth bundle",
     "type": "symfony-bundle",
     "keywords": ["security", "autentification", "user", "registration"],
@@ -23,8 +23,8 @@
     },
     "repositories": [
         {
-            "type": "vcs",
-            "url":  "git@github.com:JustCommunication-ru/func-bundle.git"
+            "type": "git",
+            "url": "https://github.com/JustCommunication-ru/wb-func-bundle.git"
         }
     ],
     "config": {

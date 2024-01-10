@@ -5,20 +5,20 @@
 Представляет из себя готовое решение по регистрации/авторизации через код подтверждения с телефона с формами для входа, таблицами хранения данных и прочего. 
 
 ## Установка 
-`composer require justcommunication/auth-bundle`
+`composer require justcommunication/wb-auth-bundle`
 
 На данный момент необходимо дописать в хост-composer.json:
 
 ```
 "repositories": [
         {
-            "type": "vcs",
-            "url":  "git@github.com:mihaylo47/auth-bundle.git"
+            "type": "git",
+            "url": "https://github.com/JustCommunication-ru/wb-auth-bundle.git"
         },
         {
-            "type": "vcs",
-            "url":  "git@github.com:mihaylo47/func-bundle.git"
-        }
+            "type": "git",
+            "url": "https://github.com/JustCommunication-ru/wb-func-bundle.git"
+        },
     ],
 ```
 
