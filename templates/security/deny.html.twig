@@ -1,0 +1,25 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Дратути</title>
+    {% block stylesheets %}
+        {{ encore_entry_link_tags('bootstrap') }}
+    {% endblock %}
+    <link rel="stylesheet" href="/css/auth-bundle-styles.css">
+
+</head>
+
+<body class="text-center">
+
+    <form class="form-signin" method="post">
+        <!--img class="mb-4" src="/docs/4.6/assets/brand/bootstrap-solid.svg" alt="" width="72" height="72"-->
+        <h1 class="h3 mb-3 font-weight-normal">Сожелямс, но у Вас нет правей доступа</h1>
+        <h2 class="h4 mb-3 font-weight-normal">А страничку надо переверстать, мда....</h2>
+        <div class="mb-3">
+            <a href="{{ path('app_logout') }}">Сменить пользователя</a> <br/>
+            <a href="{{ path('index') }}">Уйти на главную</a> <br/>
+        </div>
+    </form>
+{% block javascripts %}{% endblock %}
+</body>
+</html>

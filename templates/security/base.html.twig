@@ -1,0 +1,91 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title }}</title>
+    <link rel="stylesheet" href="/css/bootstrap.css">
+    <link rel="stylesheet" href="/css/auth-bundle-styles.css">
+
+
+</head>
+
+<body class="">
+    <script type="text/javascript">
+        var _web_root ='';
+        function erecho($val){
+            alert($val);
+        }
+        var global_redirect_to = "{% if redirect_to is defined %}{{ redirect_to }}{% endif %}";
+        var security_pass_len_min = parseInt("{% if security_pass_len_min is defined %}{{ security_pass_len_min }}{% else %}8{% endif %}");
+        var security_pass_len_max = parseInt("{% if security_pass_len_max is defined %}{{ security_pass_len_max }}{% else %}32{% endif %}");
+        var security_auth_code_len = parseInt('{{ app.request.server.get('SECURITY_AUTH_CODE_LEN') }}');
+
+        function isValidPhone(str){
+            return (new RegExp('^(\\+7|7|8)[0-9]{10}$')).test(str);
+        }
+
+        function isValidEmail(str/*, strict*/){
+            //if ( !strict ) email = email.replace(/^\s+|\s+$/g, '');
+            return (/^([a-z0-9_\-]+\.)*[a-z0-9_\-]+@([a-z0-9][a-z0-9\-]*[a-z0-9]\.)+[a-z]{2,4}$/i).test(str);
+        }
+
+        function isValidPass(str, min_length, max_length){
+            var min_length = min_length || 4; // для ГА
+            var max_length = max_length || 33;
+            return (new RegExp('^[-a-zA-Zа-яА-ЯёЁ0-9_\s!@%#*$%^&*()+=?,.]{'+min_length+','+max_length+'}$')).test(str);
+        }
+
+        window.addEventListener("DOMContentLoaded", function() {
+            [].forEach.call( document.querySelectorAll('.tel-number'), function(input) {
+                var keyCode;
+                function mask(event) {
+                    event.keyCode && (keyCode = event.keyCode);
+                    var pos = this.selectionStart;
+                    if (pos < 3) event.preventDefault();
+                    var matrix = "+7 (___) ___ ____",
+                        i = 0,
+                        def = matrix.replace(/\D/g, ""),
+                        val = this.value.replace(/\D/g, ""),
+                        new_value = matrix.replace(/[_\d]/g, function(a) {
+                            return i < val.length ? val.charAt(i++) || def.charAt(i) : a
+                        });
+                    i = new_value.indexOf("_");
+                    if (i != -1) {
+                        i < 5 && (i = 3);
+                        new_value = new_value.slice(0, i)
+                    }
+                    var reg = matrix.substr(0, this.value.length).replace(/_+/g,
+                        function(a) {
+                            return "\\d{1," + a.length + "}"
+                        }).replace(/[+()]/g, "\\$&");
+                    reg = new RegExp("^" + reg + "$");
+                    if (!reg.test(this.value) || this.value.length < 5 || keyCode > 47 && keyCode < 58) this.value = new_value;
+                    if (event.type == "blur" && this.value.length < 5)  this.value = ""
+                }
+
+                input.addEventListener("input", mask, false);
+                input.addEventListener("focus", mask, false);
+                input.addEventListener("blur", mask, false);
+                input.addEventListener("keydown", mask, false)
+
+            });
+
+        });
+
+    </script>
+
+    <script src="/js/jquery-1.12.4.min.js"></script>
+    <script src="/js/jquery.cookie.js"></script>
+    <script src="/js/scripts.lib.func.js"></script>
+    <script src="/js/scripts.lib.ajax.js"></script>
+
+    <script type="text/javascript">
+
+    </script>
+
+    <form class="form-signin" method="post">
+        {% block body %} {% endblock %}
+    </form>
+
+    {% block javascripts %}{% endblock %}
+</body>
+</html>
