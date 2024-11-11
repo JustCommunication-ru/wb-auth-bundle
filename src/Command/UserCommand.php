@@ -23,7 +23,7 @@ class UserCommand extends Command
 
     }
 
-    protected function configure()
+    protected function configure():void
     {
         $this
             ->setName('jc:auth')

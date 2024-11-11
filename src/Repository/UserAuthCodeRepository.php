@@ -11,7 +11,7 @@ use Psr\Log\LoggerInterface;
 
 class UserAuthCodeRepository extends ServiceEntityRepository
 {
-
+    private LoggerInterface $logger;
     public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
     {
         $this->logger = $logger;
