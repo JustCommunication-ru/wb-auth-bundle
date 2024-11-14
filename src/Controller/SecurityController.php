@@ -208,7 +208,7 @@ class SecurityController extends AbstractController
             $this->debugAns(array('message'=>$security->getUser()->getUsername()))
                 ->setAns(array('result'=>'error', 'code'=>'JCAB:20230629CS003', 'message'=>'Вы уже авторизованы.'));
         }else{
-            $login = $request->request->get('login');
+            $login = $request->request->get('login','');
 
             if (FuncHelper::isPhone($login)) {
                 $user = $userRepository->findByPhone($login);

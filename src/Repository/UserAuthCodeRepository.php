@@ -7,14 +7,16 @@ use JustCommunication\AuthBundle\Entity\UserAuthCode;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
-
+use Doctrine\ORM\EntityManagerInterface;
 
 class UserAuthCodeRepository extends ServiceEntityRepository
 {
     private LoggerInterface $logger;
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    private EntityManagerInterface $_em;
+    public function __construct(ManagerRegistry $registry, LoggerInterface $logger, EntityManagerInterface $em)
     {
         $this->logger = $logger;
+        $this->_em = $em;
         parent::__construct($registry, UserAuthCode::class);
     }
 
