@@ -242,6 +242,74 @@ class SecurityController extends AbstractController
 
     }
 
+
+
+/* ********** 1 */
+
+    /* отправка проверочного кода для входа как зарегистрированый пользователь   */
+    /* воход зарегистрированного пользователя по коду происходит в Authenticator.php Authenticator::authenticate() */
+
+    #[Route('/ajax/auth_get_code2', name: 'app_ajax_auth_get_code2', priority: "10000")]
+    public function ajax_auth_get_code2(Security $security,Request $request, UserRepository $userRepository, UserAuthCodeRepository $userAuthCodeRepository, EventDispatcherInterface $eventDispatcher): JsonResponse
+    {
+       /* phone & email as user login*/ 
+
+       if ($security->getUser()) {
+        $this->debugAns(array('message'=>$security->getUser()->getUsername()))
+            ->setAns(array('result'=>'error', 'code'=>'JCAB:20230629CS003', 'message'=>'Вы уже авторизованы.'));
+        }else{
+            $login_origin = $request->request->get('login','');
+            $login = $login_origin;
+            $user = null;
+            $userLogin = null;
+            $error = false;
+            if (FuncHelper::isPhone($login)) {
+                $user = $userRepository->findByPhone($login);
+                $userLogin = $user?->getPhone();   
+            }else{
+                if(FuncHelper::isEmail($login)){
+                    $user = $userRepository->findByEmail($login);
+                    $userLogin = $user?->getEmail();
+                }else{
+                    // ошибка о не правильном логине
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS010-0', 'message' => "Email [". $login_origin . "] указан неверно"));
+                    $error = true;
+                }
+            }
+            
+            // если нет ошибок , продолжить
+            if(!$error){ 
+                // если пользователь найден
+                if($user){
+                    
+                    $existCode = $userAuthCodeRepository->getActiveCodeByPhone($userLogin);     
+                
+                    if (!$existCode || $existCode->getRemainTimeForRepeat()==0) {
+                        if ($existCode) {
+                            $newCode = $userAuthCodeRepository->prolongCode($existCode);
+                        } else {
+                            $newCode = $userAuthCodeRepository->newCode($user);
+                        }
+
+                        $mess = 'Код для авторизации: *' . $newCode->getCode() . '*';
+                        $event = new UserNotifyEvent($user, $mess, $newCode);
+                        $eventDispatcher->dispatch($event, UserNotifyEvent::class);
+
+                        $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS004', 'message' => "Код авторизации успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
+                    }else{
+                        $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230630CS013', 'message' => "Код авторизации уже был отправлен ранее", 'data'=>['sec'=>$existCode->getRemainTimeForRepeat()]));
+                    }                
+                }else{
+                    // если пользователь не найден
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS005', 'message' => "Пользователь не найден."));
+                }
+            }
+        }   
+
+        return $this->jsonAns();
+
+    }
+
     /**
      * Запрос кода для регистрации (подтверждение номера телефона)
      * @param Security $security
@@ -298,7 +366,7 @@ class SecurityController extends AbstractController
                             $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS011', 'message' => "Пользователь с таким email уже зарегистрирован"));
                         }
                     }else{
-                        $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS010', 'message' => "Email указан неверно"));
+                        $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS010-1', 'message' => "Email указан неверно"));
                     }
                 }else{
                     $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS009', 'message' => "Пользователь с таким номером телефона уже зарегистрирован"));
@@ -311,6 +379,94 @@ class SecurityController extends AbstractController
         return $this->jsonAns();
 
     }
+
+/* ********** 2 */
+    /* отправка проверочного кода для подтверждения регистрационных данных (номера телефона или email)   */
+    /* воход зарегистрированного пользователя по коду происходит в ajax_reg2 */
+
+    #[Route('/ajax/reg_get_code2', name: 'app_ajax_reg_get_code2', priority: "10000")]
+    public function ajax_reg_get_code2(Security $security, Request $request, UserRepository $userRepository, UserRegCodeRepository $userRegCodeRepository, EventDispatcherInterface $eventDispatcher): JsonResponse
+    {
+       /*  phone & email  as user login */ 
+       if ($security->getUser()) {
+            $this->debugAns(array('message'=>$security->getUser()->getUsername()))->setAns(array('result'=>'error', 'code'=>'JCAB:20230629CS007', 'message'=>'Вы уже авторизованы.'));
+        }else{
+            $user = null;
+            $login = $request->request->get('login','');
+            $error = false;
+            $formattedLogin = $login;
+            $fakeUser = new User(); // залепный юзер для отправки уведомления
+            $fakeUser->setId(0);
+
+            if (FuncHelper::isPhone($login)) {
+                // если логин - телефон, произвести поиск пользователя с таким телефоном
+                $user = $userRepository->findByPhone($login);
+                // если пользователь есть - выдать ошибку о невозвможности регистрации
+                if($user){
+                    $error = true;
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS009', 'message' => "Пользователь с таким номером телефона уже зарегистрирован"));
+                }else{
+                    $formattedLogin = $userRepository->phoneFormat($login);
+                    $fakeUser->setPhone($formattedLogin);
+                }
+            }else{
+                // если логин - email произвести поиск пользователя с таким email
+                if(FuncHelper::isEmail($login)){
+                    $user = $userRepository->findByEmail($login);
+                    // если пользователь есть - выдать ошибку о невозвможности регистрации
+                    if($user){
+                        $error = true;
+                        $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS011', 'message' => "Пользователь с таким email уже зарегистрирован"));
+                    }else{
+                        $formattedLogin = $login;   
+                        $fakeUser->setEmail($login);
+                    }
+                }else{
+                    // если введенные данные не почта - выдать ошибку о некорректности email
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS010-2', 'message' => "Логин указан неверно. Это должен быть или номер телефона или email"));
+                    $error = true;
+                }
+            }
+
+            // если в предыдущих проверках не было ошибок, продолжить
+            if(!$error){
+                // если пользователь найден
+                if($user){
+                    // вернуть ошибку
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS011', 'message' => "Пользователь ". $login . " уже зарегистрирован"));
+                }else{
+                   
+                    // если пользователь не найден - продолжить регистрацию
+                    
+                    $existCode = $userRegCodeRepository->getActiveCodeByPhone($formattedLogin);
+                    $payload = []; //  ['name'=>$name, 'email'=>$email];
+                    
+                    if (!$existCode || $existCode->getRemainTimeForRepeat()==0) {
+
+                        if ($existCode) {
+                            // Тут можно проверку делать на то, что изменилось имя/мыло
+                            // Можно варнинг делать, но мы просто перезаписывать будем
+                            // Уже пробовал недавно регаться, используем тот же код
+                            $newCode = $userRegCodeRepository->prolongCode($existCode, $payload);
+                        } else {
+                            $newCode = $userRegCodeRepository->newCode($formattedLogin, FuncHelper::getIP(), $payload);
+                        }
+                   
+                        $mess = 'Код подтверждения номера телефона:: *' . $newCode->getCode() . '*';
+                        $event = new UserNotifyEvent($fakeUser, $mess, $newCode);
+                        $eventDispatcher->dispatch($event, UserNotifyEvent::class);
+
+                        $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS012', 'message' => "Код подтверждения успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
+                    }else{
+                        $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230630CS014', 'message' => "Код подтверждения уже был отправлен ранее", 'data'=>['sec'=>$existCode->getRemainTimeForRepeat()]));
+                    }                    
+                }
+           }
+        }
+   
+        return $this->jsonAns();
+    }
+
 
     /**
      * Несмотря на то, что в payload хранятся email и name прошедшие проверку на уникальнось, здесь придется делать всё заново
@@ -373,8 +529,119 @@ class SecurityController extends AbstractController
             }else{
                 $this->setAns(array('result' => 'error', 'code' => '20230630CS021', 'message' => "Телефон указан не корректно"));
             }
-
         }
+        return $this->jsonAns();
+    }
+
+/* ********** 3 */
+    /*  проверка кода для подтверждения  и завершения регистрации пользователя  */
+    /* вход зарегистрированного пользователя по проверочному коду происходит в этой функции */
+
+    #[Route('/ajax/reg2', name: 'app_ajax_reg2', priority: "10000")]
+    public function ajax_reg2(Security $security, Request $request, UserRepository $userRepository, UserRegCodeRepository $userRegCodeRepository, EventDispatcherInterface $eventDispatcher): JsonResponse
+    {
+        /* phone & email as user login*/
+        if ($security->getUser()) {
+            $this->debugAns(array('message'=>$security->getUser()->getUsername()))->setAns(array('result'=>'error', 'code'=>'JCAB:20230630CS015', 'message'=>'Вы уже авторизованы.'));
+        }else{
+            // объект пользоветеля  
+            $user = null;
+            // параметры формы регистрации
+            $login = $request->request->get('login','');
+            $code = $request->request->get('code');
+            $pass = $request->request->get('pass');
+            // общий логин - это будет или номер телефона или email не важно
+            $formattedLogin = null;
+            // отдельные параметры телефон и почта для тех функций, где это важно
+            $phone=null;
+            $email = null;
+            // флаг ошибки
+            $error = false;
+
+            // проверка является ли логин номером телефона
+            if(FuncHelper::isPhone($login)){
+                 // поиск пользователя в БД по номеру телефона
+                $user = $userRepository->findByPhone($login);
+                // если не нашелся такой пользователь - продолжить
+                if(!$user){
+                    // форматирование номера телефона
+                    $formattedLogin = $userRepository->phoneFormat($login);
+                    // сохранить в отдельную переменную номер телефона, пригодится
+                    $phone = $formattedLogin;
+                }else{
+                    // ошибка регистрации: пользователь с таким номером телефона уже зарегистрирован
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230630CS019', 'message' => "Пользователь с таким номером телефона уже зарегистрирован"));
+                    $error = true;
+                }
+            }else{
+                // если номер телефона не распознан, предположить что это email
+                if(FuncHelper::isEmail($login)){
+                    // поиск пользователя в БД по email
+                    $user = $userRepository->findByEmail($login);
+                    // если не нашелся такой пользователь - продолжить
+                    if(!$user){
+                        // сохранение email в общий логин
+                        $formattedLogin = $login;
+                        // сохранить почту в отдельную переменную, пригодится
+                        $email = $formattedLogin;
+                    }else{
+                        // ошибка регистрации: пользователь с таким email уже зарегистрирован
+                        $error = true;
+                        $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230630CS017', 'message' => "Пользователь с таким email уже зарегистрирован"));                               
+                    }
+                }else{
+                    // если логин не подходит и к email , тогда ошибка регистрации: логин указан не корректно
+                    $error = true;
+                    $this->setAns(array('result' => 'error', 'code' => '20230630CS021', 'message' => "Логин указан не корректно"));
+                }
+            }
+
+            // продолжить, если не было ошибок
+           if(!$error){ 
+                // проверить переменную пользователя, если пользователь найден
+                if($user){
+                    // возвратить ошибку
+                    $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS011', 'message' => "Пользователь ". $login . " уже зарегистрирован"));
+                }else{
+                    // проверить наличе общего логина
+                    if($formattedLogin){
+                        // если пользователь не найден - продолжить регистрацию
+                        $is_valid_pass = $pass && FuncHelper::isPass($pass, $_ENV['SECURITY_PASS_LEN_MIN'], $_ENV['SECURITY_PASS_LEN_MAX']);
+                        // проверка пароля на корректность
+                        if($is_valid_pass){
+                            // проверка кода по общему логину (или номер телефона или почта)
+                            $existCode = $userRegCodeRepository->isValidCode($formattedLogin, $code??'');
+                            // если код найден - выполнить последний шаг регистрации
+                            if ($existCode) {
+                                // установить что код был использован
+                                $userRegCodeRepository->useCode($existCode);
+                                // создать нового пользователя
+                                $user = $userRepository->newUser($phone, $email, '', $pass); // РЕГИСТРАЦИЯ НАСТОЯЩГО ПОЛЬЗОВАТЕЛЯ
+                                
+                                // тут можно уведомление на email
+                                if($email){
+                                    // отправка уведомления о регистрации
+                                }
+
+                                // выполнить авторизацию новым пользователем
+                                $security->login($user, Authenticator::class);
+                                $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230630CS016', 'message' => "Регистрация успешно завершена"));
+
+                            }else{
+                                // если код не найден - ошибка регистрации: неверный код регистрации
+                                $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230630CS018', 'message' => "Неверный код регистрации"));
+                            }
+                        }else{
+                            $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230630CS020', 'message' => "Пароль указан не корректно"));    
+                        }
+                    }else{
+                        // если общий логин так и не был инициализирован - ошибка регистрации: логин указан не корректно
+                        $this->setAns(array('result' => 'error', 'code' => '20230630CS021', 'message' => "Логин указан не корректно"));
+                    }                    
+                }
+            }        
+        }
+
         return $this->jsonAns();
     }
 

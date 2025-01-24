@@ -5,16 +5,20 @@ namespace JustCommunication\AuthBundle\Repository;
 use JustCommunication\AuthBundle\Entity\User;
 use JustCommunication\AuthBundle\Entity\UserRegCode;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
 
 class UserRegCodeRepository extends ServiceEntityRepository
 {
+    private LoggerInterface $logger;
+    private EntityManagerInterface $_em;
 
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, LoggerInterface $logger, EntityManagerInterface $em)
     {
         $this->logger = $logger;
+        $this->_em = $em;
         parent::__construct($registry, UserRegCode::class);
     }
 

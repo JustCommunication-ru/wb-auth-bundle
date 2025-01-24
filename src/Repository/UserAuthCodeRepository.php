@@ -54,6 +54,8 @@ class UserAuthCodeRepository extends ServiceEntityRepository
      * @return UserAuthCode
      */
     public function newCode(User $user):UserAuthCode{
+        $login = $user->getPhone();
+        if(!$login) $login = $user->getEmail();
         // Можно подумать над форматом кодов
 
         //$code = rand(pow(10, $_ENV['SECURITY_AUTH_CODE_LEN']),9*pow(10, $_ENV['SECURITY_AUTH_CODE_LEN']));
@@ -62,7 +64,7 @@ class UserAuthCodeRepository extends ServiceEntityRepository
         $userAuthCode->setDatein(new \DateTime())->setDatech(new \DateTime())
             ->setCode($code)
             ->setIdUser($user->getId())
-            ->setPhone($user->getPhone())
+            ->setPhone($login)
             ->setPortal($_ENV['APP_NAME'])
             ->setTries(1)
             ->setEntry(false);

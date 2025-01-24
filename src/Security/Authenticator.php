@@ -4,6 +4,7 @@ namespace JustCommunication\AuthBundle\Security;
 
 use JustCommunication\AuthBundle\Repository\UserAuthCodeRepository;
 use JustCommunication\AuthBundle\Repository\UserRepository;
+use JustCommunication\FuncBundle\Service\FuncHelper;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,6 +18,7 @@ use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
+use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 class Authenticator extends AbstractAuthenticator
 {
@@ -39,15 +41,29 @@ class Authenticator extends AbstractAuthenticator
     public function authenticate(Request $request): Passport
     {
         // Паспорту нужно отдать такой логин который он найден сам в базе, поэтому форматируем
-        $login = $this->userRepository->phoneFormat($request->request->get('login'));
+        $requestLogin = $request->request->get('login');
+        $user = null;
+        //$this->userRepository->phoneFormat();
+        if(FuncHelper::isPhone($requestLogin)){
+            $login = $this->userRepository->phoneFormat($requestLogin);
+            $user = $this->userRepository->findByPhone($login);
+        }else{
+            if(FuncHelper::isEmail($requestLogin)){
+                $login = $requestLogin;
+                $user = $this->userRepository->findByEmail($login);    
+            }else{
+                // ошибка о не правильном логине
+                throw new AuthenticationException('Логин указан не корректно');
+            }
+        }
+
         $pass = $request->request->get('password');
         $code = $request->request->get('code');
 
         $request->getSession()->set(
-            Security::LAST_USERNAME,
+            SecurityRequestAttributes::LAST_USERNAME,
             $login
         );
-        $user = $this->userRepository->findByPhone($login);
 
         if ($user){
             if ($login!='' && $code!=''){
@@ -84,7 +100,7 @@ class Authenticator extends AbstractAuthenticator
                 throw new AuthenticationException('Невозможно авторизоваться, нет данных');
             }
         }else{
-            throw new AuthenticationException('Пользователь не найден');
+            throw new AuthenticationException('Пользователь не найден ['. $login .']');
         }
 
     }

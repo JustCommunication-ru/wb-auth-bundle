@@ -6,9 +6,12 @@ use JustCommunication\AuthBundle\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Table(name: "user")]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
+
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -16,10 +19,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'id', type: 'bigint')]
     private int $id;
 
-    #[ORM\Column(type: 'string', length: 20, unique: true)]
-    private string $phone;
+    #[ORM\Column(type: 'string', length: 20, unique: true, nullable: true)]
+    private ?string $phone=null;
 
-    #[ORM\Column(type: 'string', length: 100, unique: true)]
+    #[ORM\Column(type: 'string', length: 100, unique: true, nullable: true)]
     private ?string $email=null;
 
     #[ORM\Column(length: 100)]
@@ -47,7 +50,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private \DateTime $dateen;
 
     //--------------------------------------------------------------------------------------
-
+    #[Assert\Callback]
+    public function validatePhoneAndEmail(ExecutionContextInterface $context, mixed $payload):void
+    {
+        //
+        !$this->getPhone() && !$this->getEmail() && $context->buildViolation('Phone or email must be set')->atPath('phone')->atPath('email')->addViolation();
+    }
 
     public function getId(): ?int
     {
@@ -66,9 +74,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->email;
     }
 
-    public function setEmail(string $email): static
+    public function setEmail(?string $email): static
     {
-        $this->email = mb_substr($email, 0, 100);
+        if(!empty($email)){
+            $this->email = mb_substr($email, 0, 100);
+        }else{
+            $this->email = $email;
+        }
+        
 
         return $this;
     }
@@ -87,7 +100,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function setName(?string $name): User
     {
-        $this->name = mb_substr($name, 0, 100);
+        if(!empty($name)){
+            $this->name = mb_substr($name, 0, 100);
+        }else{
+            $this->name = $name;
+        }
+        
         return $this;
     }
 
@@ -98,12 +116,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function getUserIdentifier(): string
     {
-        return (string) $this->email;
+        $ret = $this->phone;
+        if(empty($ret)) $ret = $this->email;        
+        return (string) $ret;
     }
 
     public function getUserName(): string
     {
-        return (string) $this->email;
+        $ret = $this->phone;
+        if(empty($ret)) $ret = $this->email;       
+        return (string) $ret;
     }
 
     /**
@@ -152,7 +174,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * @return string
      */
-    public function getPhone(): string
+    public function getPhone(): ?string
     {
         return $this->phone;
     }
@@ -161,7 +183,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @param string $phone
      * @return User
      */
-    public function setPhone(string $phone): User
+    public function setPhone(?string $phone): User
     {
         $this->phone = $phone;
         return $this;
