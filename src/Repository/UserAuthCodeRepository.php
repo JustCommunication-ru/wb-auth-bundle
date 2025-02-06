@@ -26,7 +26,8 @@ class UserAuthCodeRepository extends ServiceEntityRepository
      * @param string $phone
      * @return ?UserAuthCode
      */
-    public function getActiveCodeByPhone(string $phone):?UserAuthCode{
+    public function getActiveCodeByPhone(string $phone):?UserAuthCode
+    {
 
         $date = new \DateTime(date("Y-m-d H:i:s", date("U")-$_ENV["SECURITY_AUTH_CODE_TIMEOUT"]));
         $arr = $this->_em->createQuery(
@@ -53,7 +54,8 @@ class UserAuthCodeRepository extends ServiceEntityRepository
      * @param User $user
      * @return UserAuthCode
      */
-    public function newCode(User $user):UserAuthCode{
+    public function newCode(User $user):UserAuthCode
+    {
         $login = $user->getPhone();
         if(!$login) $login = $user->getEmail();
         // Можно подумать над форматом кодов
@@ -73,6 +75,11 @@ class UserAuthCodeRepository extends ServiceEntityRepository
         return $userAuthCode;
     }
 
+    public function RemoveAuthCode(UserAuthCode $code): void
+    {
+        $this->_em->remove($code);
+        $this->_em->flush();
+    }
     /**
      * Продление кода (в случае если запросили снова, а он еще активен
      * @param UserAuthCode $userAuthCode

@@ -2,6 +2,8 @@
 
 namespace JustCommunication\AuthBundle\Controller;
 
+use JustCommunication\AuthBundle\Exception\SendCodeException;
+use JustCommunication\AuthBundle\Exception\SendCodeType;
 use JustCommunication\AuthBundle\Entity\User;
 use JustCommunication\AuthBundle\Event\UserNotifyEvent;
 use JustCommunication\AuthBundle\Repository\UserAuthCodeRepository;
@@ -23,6 +25,9 @@ use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Throwable;
+
+use Symfony\Component\Mailer\Exception as MailerException;
 
 class SecurityController extends AbstractController
 {
@@ -293,9 +298,39 @@ class SecurityController extends AbstractController
 
                         $mess = 'Код для авторизации: *' . $newCode->getCode() . '*';
                         $event = new UserNotifyEvent($user, $mess, $newCode);
-                        $eventDispatcher->dispatch($event, UserNotifyEvent::class);
+                        
+                        $isSuccess = true;
+                        $sendErrorStr = '';
 
-                        $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS004', 'message' => "Код авторизации успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
+                        try{
+                            $eventDispatcher->dispatch($event, UserNotifyEvent::class);
+                        }
+                        catch(Throwable $error){
+                            $isSuccess = false;
+
+                            if ($error instanceof SendCodeException ){
+                                $sendErrorStr = $error->getMessage();
+                                if($error->getType() === SendCodeType::TELEGRAM){
+                                    $sendErrorStr .= ' .';
+                                }
+                                if($error->getType() === SendCodeType::SMS){
+                                    $sendErrorStr .= '.';
+                                }
+                            }else{
+                                $sendErrorStr = $error->getMessage() . '  {'. get_class($error) .'} ' ;    
+                            }
+
+                            $userAuthCodeRepository->RemoveAuthCode($newCode);
+                        }
+                   
+
+                        if($isSuccess){
+                            $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS004', 'message' => "Код авторизации успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
+                        }else{
+
+                            $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS010-4', 'message' => $sendErrorStr));                            
+                        }
+
                     }else{
                         $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230630CS013', 'message' => "Код авторизации уже был отправлен ранее", 'data'=>['sec'=>$existCode->getRemainTimeForRepeat()]));
                     }                
@@ -452,11 +487,40 @@ class SecurityController extends AbstractController
                             $newCode = $userRegCodeRepository->newCode($formattedLogin, FuncHelper::getIP(), $payload);
                         }
                    
-                        $mess = 'Код подтверждения номера телефона:: *' . $newCode->getCode() . '*';
+                        $mess = 'Код подтверждения :: *' . $newCode->getCode() . '*';
                         $event = new UserNotifyEvent($fakeUser, $mess, $newCode);
-                        $eventDispatcher->dispatch($event, UserNotifyEvent::class);
-
-                        $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS012', 'message' => "Код подтверждения успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
+                        $isSuccess = true;
+                        $sendErrorStr = '';
+                        try{
+                            $eventDispatcher->dispatch($event, UserNotifyEvent::class);
+                        }catch(Throwable $error){
+                            $isSuccess = false;
+                            
+                            if ($error instanceof SendCodeException ){
+                                $sendErrorStr = $error->getMessage();
+                                if($error->getType() === SendCodeType::TELEGRAM){
+                                    $sendErrorStr .= ' .';
+                                }
+                                if($error->getType() === SendCodeType::SMS){
+                                    $sendErrorStr .= '.';
+                                }
+                            }else{
+                                $sendErrorStr = $error->getMessage() . '  {'. get_class($error) .'} ' ;    
+                            }
+                            
+                            // если произошла ошибка при отравке кода, этот код нужно удалить из базы
+                            $userRegCodeRepository->removeRegCode($newCode);
+                            
+                        }
+                        if($isSuccess){
+                            $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS012', 'message' => "Код подтверждения успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
+                        }
+                        else{
+                            if(empty($sendErrorStr) ){
+                                $sendErrorStr = 'Неизвестная ошибка при отправке кода';
+                            }
+                            $this->setAns(array('result' => 'error', 'code' => 'JCAB:20230629CS010-3', 'message' => $sendErrorStr));
+                        }
                     }else{
                         $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230630CS014', 'message' => "Код подтверждения уже был отправлен ранее", 'data'=>['sec'=>$existCode->getRemainTimeForRepeat()]));
                     }                    

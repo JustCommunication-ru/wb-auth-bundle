@@ -72,6 +72,12 @@ class UserRegCodeRepository extends ServiceEntityRepository
         return $userAuthCode;
     }
 
+    public function removeRegCode(UserRegCode $code): void
+    {
+        $this->_em->remove($code);
+        $this->_em->flush();
+    }
+
     /**
      * Продление кода (в случае если запросили снова, а он еще активен
      * @param UserRegCode $userAuthCode
