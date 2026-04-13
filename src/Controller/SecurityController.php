@@ -20,7 +20,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
@@ -32,7 +32,7 @@ use Symfony\Component\Mailer\Exception as MailerException;
 class SecurityController extends AbstractController
 {
     use AjaxProtocolTrait;
-    private $curl;
+    private HttpClientInterface $curl;
 
     public function __construct(HttpClientInterface $client)
     {
