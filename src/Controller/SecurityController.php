@@ -15,6 +15,7 @@ use JustCommunication\AuthBundle\Trait\AjaxProtocolTrait;
 use Exception;
 use JustCommunication\FuncBundle\Service\FuncHelper;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -33,12 +34,14 @@ class SecurityController extends AbstractController
 {
     use AjaxProtocolTrait;
     private HttpClientInterface $curl;
+    private LoggerInterface $logger;
 
-    public function __construct(HttpClientInterface $client)
+    public function __construct(HttpClientInterface $client, $logger)
     {
         $this->curl = $client;
-        //$this->csrfCookie = $csrfCookie;
+        $this->logger = $logger;
 
+        //$this->csrfCookie = $csrfCookie;
     }
 
     /**
