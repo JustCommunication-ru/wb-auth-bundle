@@ -36,7 +36,7 @@ class SecurityController extends AbstractController
     private HttpClientInterface $curl;
     private LoggerInterface $logger;
 
-    public function __construct(HttpClientInterface $client, $logger)
+    public function __construct(HttpClientInterface $client, LoggerInterface $logger)
     {
         $this->curl = $client;
         $this->logger = $logger;
