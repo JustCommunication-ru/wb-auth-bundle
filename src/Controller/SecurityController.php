@@ -232,6 +232,7 @@ class SecurityController extends AbstractController
                         //$mess = 'Код для авторизации: *'.$code.'*'.($chat_id?'':'. Получать код в телеграм https://t.me/'.$telegram->config['bot_name']);
                         $mess = 'Код для авторизации: *' . $newCode->getCode() . '*';
                         $event = new UserNotifyEvent($user, $mess, $newCode);
+                        $event->setOrgignalLogin($login);
                         $eventDispatcher->dispatch($event, UserNotifyEvent::class);
 
                         $this->setAns(array('result' => 'success', 'code' => 'JCAB:20230629CS004', 'message' => "Код авторизации успешно отправлен", 'data'=>['sec'=>$newCode->getRemainTimeForRepeat()]));
@@ -301,7 +302,7 @@ class SecurityController extends AbstractController
 
                         $mess = 'Код для авторизации: *' . $newCode->getCode() . '*';
                         $event = new UserNotifyEvent($user, $mess, $newCode);
-                        
+                        $event->setOrgignalLogin($login_origin);
                         $isSuccess = true;
                         $sendErrorStr = '';
 
@@ -492,6 +493,7 @@ class SecurityController extends AbstractController
                    
                         $mess = 'Код подтверждения :: *' . $newCode->getCode() . '*';
                         $event = new UserNotifyEvent($fakeUser, $mess, $newCode);
+                        $event->setOrgignalLogin($login);
                         $isSuccess = true;
                         $sendErrorStr = '';
                         try{

@@ -8,6 +8,7 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 class UserNotifyEvent extends Event
 {
+    private ?String $originalLogin = null;
 
     /**
      * @param User $user
@@ -16,6 +17,7 @@ class UserNotifyEvent extends Event
      */
     public function __construct(private User $user, private string $message, private ?NotificationCodeInterface $notificationCode=null)
     {
+
     }
 
     /**
@@ -72,6 +74,15 @@ class UserNotifyEvent extends Event
         return $this;
     }
 
+    public function getOriginalLogin(): ?String
+    {
+        return $this->originalLogin;
+    }
 
+    public function setOrgignalLogin(?String $value): self
+    {
+        $this->originalLogin = $value;
+        return $this;
+    }
 
 }
